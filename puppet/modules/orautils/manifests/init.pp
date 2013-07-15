@@ -3,11 +3,12 @@ class orautils {
   include orautils::params
 
   case $operatingsystem {
-    CentOS, RedHat, OracleLinux, Ubuntu, Debian: {
+    CentOS, RedHat, OracleLinux, Ubuntu, Debian, Solaris: {
 
     $user         = "oracle"
     $group        = "dba"
     $mode         = "0775"
+	  $shell        = $orautils::params::shell
 
     if ! defined(File['/opt/scripts']) {
      file { '/opt/scripts':
@@ -35,7 +36,7 @@ class orautils {
     file { "showStatus.sh":
       path    => "/opt/scripts/wls/showStatus.sh",
       ensure  => present,
-      source  => "puppet:///modules/orautils/wls/showStatus.sh",
+      content => template("orautils/wls/showStatus.sh.erb"),  
       owner   => $user,
       group   => $group,
       mode    => $mode,
@@ -45,7 +46,7 @@ class orautils {
     file { "stopNodeManager.sh":
       path    => "/opt/scripts/wls/stopNodeManager.sh",
       ensure  => present,
-      source  => "puppet:///modules/orautils/wls/stopNodeManager.sh",
+      content => template("orautils/wls/stopNodeManager.sh.erb"), 
       owner   => $user,
       group   => $group,
       mode    => $mode,
@@ -57,6 +58,8 @@ class orautils {
     $osMdwHome        = $orautils::params::osMdwHome
     $osWlHome         = $orautils::params::osWlHome 
 	  $oraUser          = $orautils::params::oraUser
+	  $userHome         = $orautils::params::userHome
+	  $oraInstHome      = $orautils::params::oraInstHome 
 
     file { "cleanOracleEnvironment.sh":
       path    => "/opt/scripts/wls/cleanOracleEnvironment.sh",

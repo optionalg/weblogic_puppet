@@ -1,12 +1,12 @@
 # jdk7::instal7
-define jdk7::install7( $version     =  "7u17" , 
-                       $fullVersion =  "jdk1.7.0_17",
-											 $x64         =  "true",
-											 $downloadDir =  '/install/', ) {
+define jdk7::install7( $version     =  "7u25" , 
+                       $fullVersion =  "jdk1.7.0_25",
+											 $x64         =  true,
+											 $downloadDir =  '/install', ) {
 
     notify {"install7.pp ${title} ${version}":}
 
-    if $x64 == "true" {
+    if $x64 == true {
       $type = 'x64'
     } else {
       $type = 'i586'
@@ -16,6 +16,7 @@ define jdk7::install7( $version     =  "7u17" ,
       CentOS, RedHat, OracleLinux, Ubuntu, Debian: { 
         $installVersion   = "linux"
         $installExtension = ".tar.gz"
+        $path             = '/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:'
 
         $user             = "root"
         $group            = "root"
@@ -25,11 +26,19 @@ define jdk7::install7( $version     =  "7u17" ,
       }
     }
      
-    $jdkfile =  "jdk-$version-${installVersion}-${type}${installExtension}"
+    $jdkfile =  "jdk-${version}-${installVersion}-${type}${installExtension}"
 
     File { 
       replace => false,
     }
+
+    exec { "create ${$downloadDir} directory":
+             command => "mkdir -p ${$downloadDir}",
+             unless  => "test -d ${$downloadDir}",
+             user    => 'root',
+             path    => $path,
+    }
+
 
     # check install folder
     if ! defined(File[$downloadDir]) {
@@ -37,16 +46,17 @@ define jdk7::install7( $version     =  "7u17" ,
         mode    => 0777,
         path    => $downloadDir,
         ensure  => directory,
+        require => Exec["create ${$downloadDir} directory"],
       }
     }
     
     # download jdk to client
-    if ! defined(File["${downloadDir}${jdkfile}"]) {
-     file {"${downloadDir}${jdkfile}":
-        path    => "${downloadDir}${jdkfile}",
+    if ! defined(File["${downloadDir}/${jdkfile}"]) {
+     file {"${downloadDir}/${jdkfile}":
+        path    => "${downloadDir}/${jdkfile}",
         ensure  => present,
         source  => "puppet:///modules/jdk7/${jdkfile}",
-        require => File[$downloadDir],
+        require => [File[$downloadDir], Exec["create ${$downloadDir} directory"]],
      } 
     }
     # install on client 
@@ -56,6 +66,6 @@ define jdk7::install7( $version     =  "7u17" ,
           jdkfile     => $jdkfile,
           user        => $user,
           group       => $group,
-          require     => File["${downloadDir}${jdkfile}"],
+          require     => File["${downloadDir}/${jdkfile}"],
     }
 }

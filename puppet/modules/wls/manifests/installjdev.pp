@@ -5,14 +5,23 @@
 #
 # 
 
-define wls::installjdev( $jdevFile    = undef, 
-                         $fullJDKName = undef,
-                         $mdwHome     = undef,
-                         $soaAddon    = false,
-                         $user        = 'oracle',
-                         $group       = 'dba',
-                         $downloadDir = '/install/',
+define wls::installjdev( $jdevFile     = undef, 
+                         $fullJDKName  = undef,
+                         $mdwHome      = undef,
+                         $soaAddon     = false,
+                         $soaAddonFile = undef,
+                         $user         = 'oracle',
+                         $group        = 'dba',
+                         $downloadDir  = '/install/',
+                         $puppetDownloadMntPoint  = undef,   
                       ) {
+
+   if $puppetDownloadMntPoint == undef {
+     $mountPoint =  "puppet:///modules/wls/"    	
+   } else {
+     $mountPoint =	$puppetDownloadMntPoint
+   }
+
 
 
    case $operatingsystem {
@@ -84,9 +93,9 @@ define wls::installjdev( $jdevFile    = undef,
    
    # put weblogic generic jar
    file { "${jdevFile}":
-     path    => "${path}${jdevFile}",
+     path    => "${path}/${jdevFile}",
      ensure  => file,
-     source  => "puppet:///modules/wls/${jdevFile}",
+     source  => "${mountPoint}/${jdevFile}",
      require => File[$path],
      replace => false,
      backup  => false,
@@ -94,7 +103,7 @@ define wls::installjdev( $jdevFile    = undef,
 
    # de xml used by the wls installer
    file { "silent_jdeveloper.xml ${title}":
-     path    => "${path}silent_jdeveloper.xml",
+     path    => "${path}/silent_jdeveloper_${title}.xml",
      ensure  => present,
      replace => 'yes',
      content => template("wls/silent_jdeveloper.xml.erb"),
@@ -103,7 +112,7 @@ define wls::installjdev( $jdevFile    = undef,
 
    # install jdeveloper
    exec { "installjdev ${jdevFile}":
-          command     => "java -jar ${path}${jdevFile} -mode=silent -silent_xml=${path}silent_jdeveloper.xml -log=${path}installJdev.log",
+          command     => "java -jar ${path}/${jdevFile} -mode=silent -silent_xml=${path}/silent_jdeveloper_${title}.xml -log=${path}/installJdev_${title}.log",
           environment => ["JAVA_HOME=/usr/java/${fullJDKName}",
                           "CONFIG_JVM_ARGS=-Djava.security.egd=file:/dev/./urandom"],
           require     => [File["${jdevFile}"],File["silent_jdeveloper.xml ${title}"],File[$mdwHome]],
@@ -113,14 +122,14 @@ define wls::installjdev( $jdevFile    = undef,
    if ( $soaAddon == true ) { 
      # de xml used by the wls installer
      file { "jdeveloper soa addon ${title}":
-       path    => "${path}soa-jdev-extension.zip",
+       path    => "${path}/${soaAddonFile}",
        ensure  => present,
        replace => 'no',
-       source  => "puppet:///modules/wls/soa-jdev-extension.zip",
+       source  => "${mountPoint}/${soaAddonFile}",
        require => [File[$path],Exec["installjdev ${jdevFile}"]],
      }
      exec { "extract soa addon ${title}":
-       command => "unzip -o ${path}soa-jdev-extension.zip",
+       command => "unzip -o ${path}/${soaAddonFile}",
        cwd     => "${mdwHome}/jdeveloper",
        require => [File[$path],Exec["installjdev ${jdevFile}"],File["jdeveloper soa addon ${title}"]],
        creates => "${mdwHome}/jdeveloper/jdev/extensions/oracle.sca.modeler.jar",

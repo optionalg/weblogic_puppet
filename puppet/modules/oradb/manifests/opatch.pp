@@ -12,7 +12,7 @@
 #     patchFile         => 'p14727310_112030_Linux-x86-64.zip', 
 #     user              => 'oracle',
 #     group             => 'dba',
-#     downloadDir       => '/install/',   
+#     downloadDir       => '/install',   
 #     ocmrf             => 'true',
 #     require           => Class['oradb::installdb'],
 #   }
@@ -20,13 +20,14 @@
 ## 
 
 
-define oradb::opatch(  $oracleProductHome = undef,
-                       $patchId           = undef,
-                       $patchFile         = undef,  
-                       $user              = 'oracle',
-                       $group             = 'dba',
-                       $downloadDir       = '/install/',
-                       $ocmrf             = 'true',
+define oradb::opatch(  $oracleProductHome       = undef,
+                       $patchId                 = undef,
+                       $patchFile               = undef,  
+                       $user                    = 'oracle',
+                       $group                   = 'dba',
+                       $downloadDir             = '/install',
+                       $ocmrf                   = true,
+                       $puppetDownloadMntPoint  = undef, 
                     ) {
 
    case $operatingsystem {
@@ -67,11 +68,17 @@ define oradb::opatch(  $oracleProductHome = undef,
 
 if ( $continue ) {
 
+   if $puppetDownloadMntPoint == undef {
+     $mountPoint =  "puppet:///modules/oradb/"    	
+   } else {
+     $mountPoint =	$puppetDownloadMntPoint
+   }
+
 
    # the patch used by the opatch
-   if ! defined(File["${path}${patchFile}"]) {
-    file { "${path}${patchFile}":
-     source  => "puppet:///modules/oradb/${patchFile}",
+   if ! defined(File["${path}/${patchFile}"]) {
+    file { "${path}/${patchFile}":
+     source  => "${mountPoint}/${patchFile}",
     }
    }
 
@@ -83,20 +90,20 @@ if ( $continue ) {
      CentOS, RedHat, OracleLinux, Ubuntu, Debian: { 
 
         exec { "extract opatch ${patchFile} ${title}":
-          command => "unzip -n ${path}${patchFile} -d ${path}",
-          require => File ["${path}${patchFile}"],
+          command => "unzip -n ${path}/${patchFile} -d ${path}",
+          require => File ["${path}/${patchFile}"],
           creates => "${path}/${patchId}",
         }
         
-        if $ocmrf == 'true' {
+        if $ocmrf == true {
         
           exec { "exec opatch ux ocmrf ${title}":
-            command     => "${oracleProductHome}/OPatch/${oPatchCommand} -ocmrf ${oracleProductHome}/OPatch/ocm.rsp -oh ${oracleProductHome} ${path}${patchId}",
+            command     => "${oracleProductHome}/OPatch/${oPatchCommand} -ocmrf ${oracleProductHome}/OPatch/ocm.rsp -oh ${oracleProductHome} ${path}/${patchId}",
             require     => Exec["extract opatch ${patchFile} ${title}"],
           } 
         } else {
           exec { "exec opatch ux ${title}":
-            command     => "${oracleProductHome}/OPatch/${oPatchCommand} -oh ${oracleProductHome} ${path}${patchId}",
+            command     => "${oracleProductHome}/OPatch/${oPatchCommand} -oh ${oracleProductHome} ${path}/${patchId}",
             require     => Exec["extract opatch ${patchFile} ${title}"],
           }         
         }  

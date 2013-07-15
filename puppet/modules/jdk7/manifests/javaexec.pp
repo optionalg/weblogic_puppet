@@ -15,7 +15,7 @@ define javaexec ($path        = undef,
      CentOS, RedHat, OracleLinux, Ubuntu, Debian: { 
 
       $execPath         = "/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/sbin:"
-			$javaInstall      = "/usr/java/"
+			$javaInstall      = "/usr/java"
 
       Exec {
        path        => $execPath, 
@@ -36,7 +36,7 @@ define javaexec ($path        = undef,
       # extract gz file in /usr/java
       exec { "extract java ${fullversion}":
         cwd     => "${javaInstall}",
-        command => "tar -xzf ${path}${jdkfile}",
+        command => "tar -xzf ${path}/${jdkfile}",
         creates => "${javaInstall}/${fullversion}",
         require => File[$javaInstall],
       }
@@ -57,16 +57,29 @@ define javaexec ($path        = undef,
         require     => File['/usr/java/latest'],
       }
 
-			# set the java default
-      exec { "default java alternatives ${fullversion}":
-        command => "alternatives --install /usr/bin/java java /usr/java/${fullversion}/bin/java 17065",
-        require => File['/usr/java/default'],
-      }
+      case $operatingsystem {
+        CentOS, RedHat, OracleLinux: {
+			    # set the java default
+          exec { "default java alternatives ${fullversion}":
+            command => "alternatives --install /usr/bin/java java /usr/java/${fullversion}/bin/java 17065",
+            require => File['/usr/java/default'],
+          }
+        }
+        Ubuntu, Debian:{
+			    # set the java default
+          exec { "default java alternatives ${fullversion}":
+            command => "update-alternatives --install /usr/bin/java java /usr/java/${fullversion}/bin/java 17065",
+            require => File['/usr/java/default'],
+          }
 
+        }
+
+      }
+        
       exec { "set urandom ${fullversion}":
        	command => "sed -i -e's/securerandom.source=file:\/dev\/urandom/securerandom.source=file:\/dev\/.\/urandom/g' /usr/java/${fullversion}/jre/lib/security/java.security",
         onlyif  => "/bin/grep securerandom.source=file:/dev/urandom /usr/java/${fullversion}/jre/lib/security/java.security | /usr/bin/wc -l",
-        require => Exec["default java alternatives ${fullversion}"],
+        require => Exec["extract java ${fullversion}"],
       }
 
      

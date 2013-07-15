@@ -5,23 +5,43 @@ created by Edwin Biemond
 [biemond.blogspot.com](http://biemond.blogspot.com)    
 [Github homepage](https://github.com/biemond/puppet)    
 
-Should work for RedHat,CentOS ,Ubuntu, Debian or OracleLinux 
+Should work for RedHat, CentOS, Ubuntu, Debian or OracleLinux 
+
+Works with Puppet 2.7 & 3.0 
+
+Version updates
+---------------
+
+- 0.7.7 RCU support for WebCenter and SOA Suite  
+- 0.7.6 OPatch upgrade made by Ronald Hatcher  
+- 0.7.5 support for Oracle database 12c or 12.1.0.1 plus bug fixes  
+- 0.7.4 puppet 3.0 compatible  
+- 0.7.3 bugfixes plus facts in sync with wls modules   
+- 0.7.2 bugfixes for rcu and database facts 
+
 
 Oracle Database Features
 ---------------------------
 
+- Oracle Database 12.1.0.1 Linux installation
 - Oracle Database 11.2.0.3 Linux installation
 - Oracle Database 11.2.0.1 Linux installation
 - Oracle Database Net configuration   
-- Oracle Database Listener   
+- Oracle Database Listener
+- OPatch upgrade      
 - Apply OPatch  
 - Create database instances  
 - Stop/Start database instances  
-- Installs RCU repositoy for Oracle SOA Suite   
+- Installs RCU repositoy for Oracle SOA Suite / Webcenter ( 11.1.1.6.0 and 11.1.1.7.0 )   
+
+Some manifests like installdb.pp, opatch.pp or rcusoa.pp supports an alternative mountpoint for the big oracle files.  
+When not provided it uses the files location of the oradb puppet module  
+else you can use $puppetDownloadMntPoint => "/mnt" or "puppet:///modules/xxxx/"  
 
 Coming in next release
 
 - Oracle Database 11.2.0.1 Linux Client installation
+- Auto startup scripts
                                          
 Files
 -----
@@ -30,6 +50,12 @@ Patch 10404530: 11.2.0.3.0 PATCH SET FOR ORACLE DATABASE SERVER
 and upload this to the files folder of the oradb puppet module  
 
 For 11.2.0.1 Download oracle database linux software from http://otn.oracle.com
+
+For 12.1.0.1 Download oracle database linux software from http://otn.oracle.com
+
+# database files of linux 12.1.0.1 ( otn.oracle.com )  
+1361028723 Jun 27 23:38 linuxamd64_12c_database_1of2.zip  
+1116527103 Jun 27 23:38 linuxamd64_12c_database_2of2.zip  
 
 # database files of linux 11.2.0.3 ( support.oracle.com )
 1358454646 Mar  9 17:31 p10404530_112030_Linux-x86-64_1of7.zip  
@@ -44,16 +70,18 @@ For 11.2.0.1 Download oracle database linux software from http://otn.oracle.com
  1239269270 Mar 10 17:05 linux.x64_11gR2_database_1of2.zip  
  1111416131 Mar 10 17:17 linux.x64_11gR2_database_2of2.zip  
 
-# opatch database patch  
+# opatch database patch for 11.2.0.3    
   25556377 Mar 10 12:48 p14727310_112030_Linux-x86-64.zip  
-# patches opatch for 11.2.0.3   
-  32551315 Mar 10 13:10 p6880880_112000_Linux-x86-64.zip  
+
+# opatch upgrade
+  32551984 Jul  6 18:58 p6880880_112000_Linux-x86-64.zip
 
 # database client linux 11.2.0.1 ( otn.oracle.com )  
  706187979 Mar 10 16:48 linux.x64_11gR2_client.zip  
 
 # rcu linux installer
-ofm_rcu_linux_11.1.1.6.0_disk1_1of1.zip  
+ 408989041 Mar 17 20:17 ofm_rcu_linux_11.1.1.6.0_disk1_1of1.zip  
+ 411498103 Apr  1 21:23 ofm_rcu_linux_11.1.1.7.0_32_disk1_1of1.zip  
 
 important support node
 [ID 1441282.1] Requirements for Installing Oracle 11gR2 RDBMS on RHEL6 or OL6 64-bit (x86-64)  
@@ -79,15 +107,33 @@ The databaseType value should contain only one of these choices.
 - SE     : Standard Edition                                  
 - SEONE  : Standard Edition One
 
+     #$puppetDownloadMntPoint = "puppet:///database/"
+     $puppetDownloadMntPoint = "puppet:///modules/oradb/
+
+     oradb::installdb{ '12.1.0.1_Linux-x86-64':
+            version                => '12.1.0.1',
+            file                   => 'linuxamd64_12c_database',
+            databaseType           => 'SE',
+            oracleBase             => '/oracle',
+            oracleHome             => '/oracle/product/12.1/db',
+            user                   => 'oracle',
+            group                  => 'dba',
+            downloadDir            => '/data/install',
+            puppetDownloadMntPoint => $puppetDownloadMntPoint,  
+     }
+
+or
+
      oradb::installdb{ '112030_Linux-x86-64':
-            version      => '11.2.0.3',
-            file         => 'p10404530_112030_Linux-x86-64',
-            databaseType => 'SE',
-            oracleBase   => '/oracle',
-            oracleHome   => '/oracle/product/11.2/db',
-            user         => 'oracle',
-            group        => 'dba',
-            downloadDir  => '/install/',  
+            version                => '11.2.0.3',
+            file                   => 'p10404530_112030_Linux-x86-64',
+            databaseType           => 'SE',
+            oracleBase             => '/oracle',
+            oracleHome             => '/oracle/product/11.2/db',
+            user                   => 'oracle',
+            group                  => 'dba',
+            downloadDir            => '/install',
+            puppetDownloadMntPoint => $puppetDownloadMntPoint,   
      }
 
 or 
@@ -100,31 +146,46 @@ or
             oracleHome   => '/oracle/product/11.2/db',
             user         => 'oracle',
             group        => 'dba',
-            downloadDir  => '/install/',  
+            downloadDir  => '/install',  
      }
 
 
 other
   
-     # for this example OPatch 14727310
-     # the OPatch utility must be upgraded ( patch 6880880)
-     # after that 'cd $ORACLE_HOME/OPatch' and run 'ocm/bin/emocmrsp'
-     oradb::opatch{'14727310_db_patch':
-       oracleProductHome => '/oracle/product/11.2/db' ,
-       patchId           => '14727310', 
-       patchFile         => 'p14727310_112030_Linux-x86-64.zip',  
-       user              => 'oracle',
-       group             => 'dba',
-       downloadDir       => '/install/',
-       ocmrf             => 'true',   
-       require           => Oradb::Installdb['112030_Linux-x86-64'],
-     }
+	    oradb::opatchupgrade{'112000_opatch_upgrade':
+	      oracleHome             => '/oracle/product/11.2/db' ,
+	      patchFile              => 'p6880880_112000_Linux-x86-64.zip', 
+	      csiNumber              => '11111',
+	      supportId              => 'biemond@gmail.com',
+	      opversion              => '11.2.0.3.4',
+	      user                   => 'oracle',
+	      group                  => 'dba',
+	      downloadDir            => '/install',
+	      puppetDownloadMntPoint => $puppetDownloadMntPoint,    
+	      require                =>  Oradb::Installdb['112030_Linux-x86-64'],
+	    }
+	
+	
+	   # for this example OPatch 14727310
+	   # the OPatch utility must be upgraded ( patch 6880880, see above)
+	   oradb::opatch{'14727310_db_patch':
+	     oracleProductHome      => '/oracle/product/11.2/db' ,
+	     patchId                => '14727310', 
+	     patchFile              => 'p14727310_112030_Linux-x86-64.zip',  
+	     user                   => 'oracle',
+	     group                  => 'dba',
+	     downloadDir            => '/install',
+	     ocmrf                  => true,   
+	     require                => Oradb::Opatchupgrade['112000_opatch_upgrade'],
+	     puppetDownloadMntPoint => $puppetDownloadMntPoint, 
+	   }
 
      oradb::net{ 'config net8':
             oracleHome   => '/oracle/product/11.2/db',
+            version      => '11.2' or "12.1",   
             user         => 'oracle',
             group        => 'dba',
-            downloadDir  => '/install/',
+            downloadDir  => '/install',
             require      => Oradb::Opatch['14727310_db_patch'],
      }
 
@@ -153,9 +214,10 @@ other
      oradb::database{ 'testDb_Create': 
                       oracleBase              => '/oracle',
                       oracleHome              => '/oracle/product/11.2/db',
+                      version                 => '11.2' or "12.1", 
                       user                    => 'oracle',
                       group                   => 'dba',
-                      downloadDir             => '/install/',
+                      downloadDir             => '/install',
                       action                  => 'create',
                       dbName                  => 'test',
                       dbDomain                => 'oracle.com',
@@ -165,7 +227,7 @@ other
                       recoveryAreaDestination => "/oracle/flash_recovery_area",
                       characterSet            => "AL32UTF8",
                       nationalCharacterSet    => "UTF8",
-                      initParams              => "open_cursors=1000,processes=600,job_queue_processes=4,compatible=11.2.0.0.0",
+                      initParams              => "open_cursors=1000,processes=600,job_queue_processes=4",
                       sampleSchema            => 'TRUE',
                       memoryPercentage        => "40",
                       memoryTotal             => "800",
@@ -191,50 +253,105 @@ other
                      require                 => Oradb::Dbactions['stop testDb'],
     }
 
-    oradb::rcusoa{    'DEV3_PS5':
-                     rcuFile          => 'ofm_rcu_linux_11.1.1.6.0_disk1_1of1.zip',
-                     version          => '11.1.1.6',  
-                     oracleHome       => '/oracle/product/11.2/db',
-                     user             => 'oracle',
-                     group            => 'dba',
-                     downloadDir      => '/install/',
-                     action           => 'create',
-                     dbServer         => 'dbagent1.alfa.local:1521',  
-                     dbService        => 'test.oracle.com',
-                     sysPassword      => 'Welcome01',
-                     schemaPrefix     => 'DEV3',
-                     reposPassword    => 'Welcome02',
-                     require          => Oradb::Dbactions['start testDb'],
-    }
 
-    oradb::rcusoa{    'Delete_DEV3_PS5':
-                     rcuFile          => 'ofm_rcu_linux_11.1.1.6.0_disk1_1of1.zip',
-                     version          => '11.1.1.6',  
-                     oracleHome       => '/oracle/product/11.2/db',
-                     user             => 'oracle',
-                     group            => 'dba',
-                     downloadDir      => '/install/',
-                     action           => 'delete',
-                     dbServer         => 'dbagent1.alfa.local:1521',  
-                     dbService        => 'test.oracle.com',
-                     sysPassword      => 'Welcome01',
-                     schemaPrefix     => 'DEV3',
-                     reposPassword    => 'Welcome02',
-                     require          => Oradb::Rcusoa['DEV3_PS5'],
-    }
 
     oradb::database{ 'testDb_Delete': 
                       oracleBase              => '/oracle',
                       oracleHome              => '/oracle/product/11.2/db',
                       user                    => 'oracle',
                       group                   => 'dba',
-                      downloadDir             => '/install/',
+                      downloadDir             => '/install',
                       action                  => 'delete',
                       dbName                  => 'test',
                       sysPassword             => 'Welcome01',
-                      require                 => Oradb::Rcusoa['Delete_DEV3_PS5'],
+                      require                 => Oradb::Dbactions['start testDb'],
     }
+
+	  case $operatingsystem {
+	    CentOS, RedHat, OracleLinux, Ubuntu, Debian: { 
+	      $mtimeParam = "1"
+	    }
+	    Solaris: { 
+	      $mtimeParam = "+1"
+	    }
+	  }
+	
+	
+	  case $operatingsystem {
+	    CentOS, RedHat, OracleLinux, Ubuntu, Debian, Solaris: { 
+	
+			  cron { 'oracle_db_opatch' :
+			    command => "find /oracle/product/12.1/db/cfgtoollogs/opatch -name 'opatch*.log' -mtime ${mtimeParam} -exec rm {} \\; >> /tmp/opatch_db_purge.log 2>&1",
+			    user    => oracle,
+			    hour    => 06,
+			    minute  => 34,
+			  }
+			 
+			  cron { 'oracle_db_lsinv' :
+			    command => "find /oracle/product/12.1/db/cfgtoollogs/opatch/lsinv -name 'lsinventory*.txt' -mtime ${mtimeParam} -exec rm {} \\; >> /tmp/opatch_lsinv_db_purge.log 2>&1",
+			    user    => oracle,
+			    hour    => 06,
+			    minute  => 32,
+			  }
+	
+	
+	    }
+	  }
+
   
+
+Oracle SOA Suite Repository Creation Utility (RCU)
+
+    oradb::rcu{     'DEV_PS6':
+                     rcuFile          => 'ofm_rcu_linux_11.1.1.7.0_32_disk1_1of1.zip',
+                     product          => 'soasuite',
+                     version          => '11.1.1.7',  
+                     oracleHome       => '/oracle/product/11.2/db',
+                     user             => 'oracle',
+                     group            => 'dba',
+                     downloadDir      => '/install',
+                     action           => 'create',
+                     dbServer         => 'dbagent1.alfa.local:1521',  
+                     dbService        => 'test.oracle.com',
+                     sysPassword      => 'Welcome01',
+                     schemaPrefix     => 'DEV',
+                     reposPassword    => 'Welcome02',
+    }
+
+    oradb::rcu{     'DEV2_PS6':
+                     rcuFile          => 'ofm_rcu_linux_11.1.1.7.0_32_disk1_1of1.zip',
+                     product          => 'webcenter',
+                     version          => '11.1.1.7',  
+                     oracleHome       => '/oracle/product/11.2/db',
+                     user             => 'oracle',
+                     group            => 'dba',
+                     downloadDir      => '/install',
+                     action           => 'create',
+                     dbServer         => 'dbagent1.alfa.local:1521',  
+                     dbService        => 'test.oracle.com',
+                     sysPassword      => 'Welcome01',
+                     schemaPrefix     => 'DEV',
+                     reposPassword    => 'Welcome02',
+    }
+
+
+    oradb::rcu{     'Delete_DEV3_PS5':
+                     rcuFile          => 'ofm_rcu_linux_11.1.1.6.0_disk1_1of1.zip',
+                     product          => 'soasuite',
+                     version          => '11.1.1.6',  
+                     oracleHome       => '/oracle/product/11.2/db',
+                     user             => 'oracle',
+                     group            => 'dba',
+                     downloadDir      => '/install',
+                     action           => 'delete',
+                     dbServer         => 'dbagent1.alfa.local:1521',  
+                     dbService        => 'test.oracle.com',
+                     sysPassword      => 'Welcome01',
+                     schemaPrefix     => 'DEV3',
+                     reposPassword    => 'Welcome02',
+    }
+
+
 
 
 
@@ -365,7 +482,7 @@ install the following module to set the database user limits parameters
          config => {
                     '*'        => { 'nofile'  => { soft => '2048'   , hard => '8192',   },
                                   },
-                    '@oracle'  => { 'nofile'  => { soft => '1024'   , hard => '65536',  },
+                    'oracle'  => { 'nofile'  => { soft => '1024'   , hard => '65536',  },
                                     'nproc'   => { soft => '2048'   , hard => '16384',   },
                                     'stack'   => { soft => '10240'  ,},
                                   },
